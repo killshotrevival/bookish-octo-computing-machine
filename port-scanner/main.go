@@ -3,9 +3,9 @@ package portscanner
 import (
 	"encoding/json"
 	"endgame/utils"
+	"net"
 	"net/url"
 	"os"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,13 +28,15 @@ func StartScan(scanData utils.ScanData) error {
 	}
 	newLog.Infof("Domain name found -> %s", parsedURL.Host)
 
-	cmd := exec.Command("rustscan", "-a", parsedURL.Host, "-r", "1-65535", "-u", "5000", "-g")
-	stdout, err := cmd.Output()
+	// cmd := exec.Command("rustscan", "-a", parsedURL.Host, "-r", "1-65535", "-u", "5000", "-g")
+	// stdout, err := cmd.Output()
 
-	if err != nil {
-		newLog.Panicf("Error occurred while rust scan -> %s", err.Error())
-		return err
-	}
+	// if err != nil {
+	// 	newLog.Panicf("Error occurred while rust scan -> %s", err.Error())
+	// 	return err
+	// }
+
+	stdout := "103.48.51.180 -> [21,80,53,110,143,443,587,1232,3306,8172,8443,8880,49670,64000]"
 
 	newLog.Infof("Response found -> %s", stdout)
 
@@ -47,10 +49,10 @@ func StartScan(scanData utils.ScanData) error {
 		newLog.Info("No port found for scanning")
 	}
 
-	newLog.Info("RustScan might have overloaded the server, let it rest.")
-	time.Sleep(10 * time.Second)
+	// newLog.Info("RustScan might have overloaded the server, let it rest.")
+	// time.Sleep(10 * time.Second)
 
-	err = serviceDetection(&portFoundArray, newLog)
+	err = serviceDetection(parsedURL.Host, &portFoundArray, newLog)
 	if err != nil {
 		newLog.Errorf("Error occurred while service detection -> %s", err.Error())
 		return err
@@ -60,14 +62,14 @@ func StartScan(scanData utils.ScanData) error {
 }
 
 // This function will be used for doing service detection on a specific port
-func serviceDetection(portFoundArray *[]string, newLog *log.Entry) error {
+func serviceDetection(host string, portFoundArray *[]string, newLog *log.Entry) error {
 	newLog.Info("Starting service detection")
 
 	file, _ := os.Open("resource/portscanner_service_probes.json")
 	decoder := json.NewDecoder(file)
 
-	configuration := []PortScannerProbe{}
-	err := decoder.Decode(&configuration)
+	portScannerProbeList := []PortScannerProbe{}
+	err := decoder.Decode(&portScannerProbeList)
 	if err != nil {
 		newLog.Panicf("Error occurred while reading config -> %s", err.Error())
 		newLog.Panicf("Please create `config.json` file in proper format")
@@ -75,11 +77,11 @@ func serviceDetection(portFoundArray *[]string, newLog *log.Entry) error {
 	}
 	file.Close()
 
-	newLog.Infof("Scanner Probe loaded -> %d", len(configuration))
+	newLog.Infof("Scanner Probe loaded -> %d", len(portScannerProbeList))
 
 	for _, port := range *portFoundArray {
 		newLog.Infof("Checking for port -> %s", port)
-		err := checkForPort(port, newLog)
+		err := checkForPort(host, port, &portScannerProbeList, newLog)
 		if err != nil {
 			newLog.Errorf("Error occurred while further examining port -> %s", err.Error())
 		}
@@ -88,7 +90,8 @@ func serviceDetection(portFoundArray *[]string, newLog *log.Entry) error {
 	return nil
 }
 
-func checkForPort(port string, newLog *log.Entry) error {
+func checkForPort(host string, port string, portScannerProbeList *[]PortScannerProbe, newLog *log.Entry) error {
+
 	for _, excludedPort := range ExcludedList {
 		if port == excludedPort {
 			newLog.Infof("%s is in excluded list, continuing without service detection.", port)
@@ -97,28 +100,96 @@ func checkForPort(port string, newLog *log.Entry) error {
 	}
 
 	newLog.Info("Running NULL probe test...")
+	addr, err := net.LookupIP(host)
+	if err != nil {
+		newLog.Errorf("Error occurred while fetching IP from hostname -> %s", err.Error())
+		return err
+	}
+	bannerMatcher(host, addr[0].String(), port, []PortScannerProbe{(*portScannerProbeList)[0]}, "NULL", newLog)
 	return nil
 
 }
 
-func bannerMatcher(host string, addr string, port int, probes []PortScannerProbe, phase string, newLog *log.Entry) error {
-	var rarityInt int
+func bannerMatcher(host string, addr string, port string, probes []PortScannerProbe, phase string, newLog *log.Entry) error {
+	var rarityInt, timeout int
 	var err error
+	var banner string
 	for _, probe := range probes {
 		newLog.Infof("Current probe : %s", probe.Probe.ProbeName)
-		rarityInt, err = strconv.Atoi(probe.Rarity.Rarity)
+
+		if probe.Rarity.Rarity != "" {
+			rarityInt, err = strconv.Atoi(probe.Rarity.Rarity)
+			if err != nil {
+				newLog.Errorf("Error occurred converting rarity to int -> %s", err.Error())
+				continue
+			}
+			if rarityInt > 5 && phase == "Excluded" {
+				return nil
+			}
+		}
+
+		if phase == "NULL" {
+			timeout = 30
+		} else if probe.TotalWaitMs.TotalWaitMs != "" {
+			timeout, err = strconv.Atoi(probe.TotalWaitMs.TotalWaitMs)
+			if err != nil {
+				newLog.Errorf("Error occurred while converting total wait ms to int -> %s", err.Error())
+				continue
+			}
+
+			timeout *= 1000
+		} else {
+			timeout = 6
+		}
+		banner, err = socketConnector(addr, port, probe.Probe.ProbeString, timeout, 0, newLog)
 		if err != nil {
-			newLog.Errorf("Error occurred converting rarity to int -> %s", err.Error())
 			continue
 		}
 
-		if probe.Rarity.Rarity != "" && rarityInt > 5 && phase == "Excluded" {
-			return nil
-		}
-
+		newLog.Infof("Banner received ->  %s", banner)
 	}
 
 	return nil
+}
+
+func socketConnector(addr string, port string, probeString string, timeout int, retry int, newLog *log.Entry) (string, error) {
+	newLog.Infof("Connecting to %s with timeout %d", addr+":"+port, timeout)
+	connection, err := net.DialTimeout("tcp", addr+":"+port, time.Duration(timeout)*time.Second)
+	if err != nil {
+		newLog.Errorf("Error occurred while connecting to server -> %s", err.Error())
+		if retry > 0 {
+			return socketConnector(addr, port, probeString, timeout+5, retry, newLog)
+		} else {
+			return "SOCKET_EXCEPTION", nil
+		}
+	}
+	newLog.Info("Connection to server successful")
+	defer connection.Close()
+
+	newLog.Info("Sending Data to server")
+	_, err = connection.Write([]byte(probeString))
+	if err != nil {
+		newLog.Errorf("Error occurred while sending data to server -> %s", err.Error())
+		if retry > 0 {
+			return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
+		} else {
+			return "SOCKET_EXCEPTION", nil
+		}
+	}
+
+	newLog.Info("Fetching data from server")
+	buffer := make([]byte, 1024)
+	mLen, err := connection.Read(buffer)
+	if err != nil {
+		newLog.Errorf("Error occurred while reading data from server -> %s", err.Error())
+		if retry > 0 {
+			return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
+		} else {
+			return "SOCKET_EXCEPTION", nil
+		}
+	}
+
+	return string(buffer[:mLen]), nil
 }
 
 // This function can be used for raising alerts in port scanning
