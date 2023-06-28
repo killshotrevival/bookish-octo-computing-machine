@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,15 +29,13 @@ func StartScan(scanData utils.ScanData) error {
 	}
 	newLog.Infof("Domain name found -> %s", parsedURL.Host)
 
-	// cmd := exec.Command("rustscan", "-a", parsedURL.Host, "-r", "1-65535", "-u", "5000", "-g")
-	// stdout, err := cmd.Output()
+	cmd := exec.Command("rustscan", "-a", parsedURL.Host, "-r", "1-65535", "-u", "5000", "-g")
+	stdout, err := cmd.Output()
 
-	// if err != nil {
-	// 	newLog.Panicf("Error occurred while rust scan -> %s", err.Error())
-	// 	return err
-	// }
-
-	stdout := "103.48.51.180 -> [21,80,53,110,143,443,587,1232,3306,8172,8443,8880,49670,64000]"
+	if err != nil {
+		newLog.Panicf("Error occurred while rust scan -> %s", err.Error())
+		return err
+	}
 
 	newLog.Infof("Response found -> %s", stdout)
 
@@ -49,8 +48,8 @@ func StartScan(scanData utils.ScanData) error {
 		newLog.Info("No port found for scanning")
 	}
 
-	// newLog.Info("RustScan might have overloaded the server, let it rest.")
-	// time.Sleep(10 * time.Second)
+	newLog.Info("RustScan might have overloaded the server, let it rest.")
+	time.Sleep(10 * time.Second)
 
 	err = serviceDetection(parsedURL.Host, &portFoundArray, newLog)
 	if err != nil {
@@ -113,7 +112,7 @@ func checkForPort(host string, port string, portScannerProbeList *[]PortScannerP
 func bannerMatcher(host string, addr string, port string, probes []PortScannerProbe, phase string, newLog *log.Entry) error {
 	var rarityInt, timeout int
 	var err error
-	var banner string
+	var banner, matchedString string
 	for _, probe := range probes {
 		newLog.Infof("Current probe : %s", probe.Probe.ProbeName)
 
@@ -147,6 +146,29 @@ func bannerMatcher(host string, addr string, port string, probes []PortScannerPr
 		}
 
 		newLog.Infof("Banner received ->  %s", banner)
+
+		continue
+		// Some regular expression are failing that is why I have cutoff the below statements
+
+		for _, match := range probe.Matches {
+			re := regexp.MustCompile(match.Pattern)
+			matchedString = re.FindString(banner)
+
+			if matchedString != "" {
+				newLog.Infof("%s service is running on port %s, verified by probe matches", match.Service, port)
+			}
+		}
+
+		if len(probe.SoftMatches) > 0 {
+			for _, match := range probe.SoftMatches {
+				re := regexp.MustCompile(match.Pattern)
+				matchedString = re.FindString(banner)
+
+				if matchedString != "" {
+					newLog.Infof("%s service is running on port %s, verified by probe Soft matches", match.Service, port)
+				}
+			}
+		}
 	}
 
 	return nil
