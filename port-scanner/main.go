@@ -157,23 +157,33 @@ func socketConnector(addr string, port string, probeString string, timeout int, 
 	connection, err := net.DialTimeout("tcp", addr+":"+port, time.Duration(timeout)*time.Second)
 	if err != nil {
 		newLog.Errorf("Error occurred while connecting to server -> %s", err.Error())
-		if retry > 0 {
-			return socketConnector(addr, port, probeString, timeout+5, retry, newLog)
+		if err == os.ErrDeadlineExceeded {
+			if retry > 0 {
+				return socketConnector(addr, port, probeString, timeout+5, retry, newLog)
+			} else {
+				return "SOCKET_TIMEOUT_EXCEPTION", err
+			}
 		} else {
-			return "SOCKET_EXCEPTION", nil
+			return "SOCKET_EXCEPTION", err
 		}
 	}
 	newLog.Info("Connection to server successful")
+
+	connection.SetDeadline(time.Now().Add(time.Duration(timeout * int(time.Second))))
 	defer connection.Close()
 
 	newLog.Info("Sending Data to server")
 	_, err = connection.Write([]byte(probeString))
 	if err != nil {
 		newLog.Errorf("Error occurred while sending data to server -> %s", err.Error())
-		if retry > 0 {
-			return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
+		if err == os.ErrDeadlineExceeded {
+			if retry > 0 {
+				return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
+			} else {
+				return "SOCKET_TIMEOUT_EXCEPTION", err
+			}
 		} else {
-			return "SOCKET_EXCEPTION", nil
+			return "SOCKET_EXCEPTION", err
 		}
 	}
 
@@ -182,10 +192,14 @@ func socketConnector(addr string, port string, probeString string, timeout int, 
 	mLen, err := connection.Read(buffer)
 	if err != nil {
 		newLog.Errorf("Error occurred while reading data from server -> %s", err.Error())
-		if retry > 0 {
-			return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
+		if err == os.ErrDeadlineExceeded {
+			if retry > 0 {
+				return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
+			} else {
+				return "SOCKET_TIMEOUT_EXCEPTION", err
+			}
 		} else {
-			return "SOCKET_EXCEPTION", nil
+			return "SOCKET_EXCEPTION", err
 		}
 	}
 
