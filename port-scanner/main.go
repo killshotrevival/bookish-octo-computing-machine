@@ -129,7 +129,7 @@ func bannerMatcher(host string, addr string, port string, probes []PortScannerPr
 		}
 
 		if phase == "NULL" {
-			timeout = 30
+			timeout = 10
 		} else if probe.TotalWaitMs.TotalWaitMs != "" {
 			timeout, err = strconv.Atoi(probe.TotalWaitMs.TotalWaitMs)
 			if err != nil {
@@ -189,7 +189,7 @@ func socketConnector(addr string, port string, probeString string, timeout int, 
 		}
 	}
 
-	return string(buffer[:mLen]), nil
+	return strings.Trim(string(buffer[:mLen]), "\r\n"), nil
 }
 
 // This function can be used for raising alerts in port scanning
