@@ -3,8 +3,9 @@ package utils
 import "encoding/json"
 
 type ScanData struct {
-	Meta    Meta    `json:"meta"`
-	Context Context `json:"context"`
+	Meta       Meta    `json:"meta"`
+	Context    Context `json:"context"`
+	ApiService string  `json:"api_service_name"`
 }
 
 type WebhookRequest struct {
@@ -31,8 +32,4 @@ type Meta struct {
 
 type Context struct {
 	Target string `json:"target"`
-}
-
-func ValidateScanData(scanData *ScanData) error {
-	return nil
 }
