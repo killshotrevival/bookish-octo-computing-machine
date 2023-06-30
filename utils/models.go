@@ -33,3 +33,11 @@ type Meta struct {
 type Context struct {
 	Target string `json:"target"`
 }
+
+type SlackRequest struct {
+	JsonBlock SlackRequestData `json:"json_block"`
+}
+
+type SlackRequestData struct {
+	Text string `json:"text"`
+}

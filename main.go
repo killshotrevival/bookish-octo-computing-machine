@@ -55,6 +55,12 @@ func main() {
 	}
 	newLog.Info("Configuration loaded successfully, sending start scan request on webhook")
 
+	defer func() {
+		if err := recover(); err != nil {
+			utils.SendRequestToSlack(&configuration, newLog, err)
+		}
+	}()
+
 	utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
 
 	err = StartScansInRoutine(&configuration)
@@ -65,4 +71,6 @@ func main() {
 	}
 
 	newLog.Info("All scans completed successfully exiting")
+
+	utils.SendCompleteScanRequest(&configuration, newLog)
 }

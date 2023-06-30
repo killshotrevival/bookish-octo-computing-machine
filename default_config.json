@@ -7,5 +7,6 @@
     },
     "context": {
         "target": "<SCAN_TARGET>"
-    }
+    },
+    "api_service_name" : "<DAST_API_SVC_NAME>"
 }
