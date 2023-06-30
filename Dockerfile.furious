@@ -1,0 +1,8 @@
+# Please clone furious from https://github.com/liamg/furious and run this Dockerfile there
+FROM --platform=linux/amd64 golang:1.20.5 as build
+WORKDIR /temp
+
+COPY . /temp/
+RUN apt update && apt install libpcap-dev -y
+RUN CGO_ENABLED=1 go build .
+RUN cp furious /usr/local/bin/furious
