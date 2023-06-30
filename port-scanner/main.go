@@ -3,13 +3,11 @@ package portscanner
 import (
 	"encoding/json"
 	"endgame/utils"
-	"net"
+	"fmt"
 	"net/url"
-	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -28,220 +26,92 @@ func StartScan(scanData utils.ScanData) error {
 		panic(err)
 	}
 	newLog.Infof("Domain name found -> %s", parsedURL.Host)
+	time.Sleep(2 * time.Minute)
 
-	cmd := exec.Command("rustscan", "-a", parsedURL.Host, "-r", "1-65535", "-u", "5000", "-g")
+	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", parsedURL.Host)
 	stdout, err := cmd.Output()
 
+	furiousOutput := string(stdout)
+
 	if err != nil {
-		newLog.Panicf("Error occurred while rust scan -> %s", err.Error())
+		newLog.Panicf("Error occurred while furious -> %s", err.Error())
 		return err
 	}
 
-	newLog.Infof("Response found -> %s", stdout)
+	newLog.Infof("Response found -> %s", furiousOutput)
 
-	re := regexp.MustCompile(`\[([\d,]+)\]`)
-	portFoundString := re.FindStringSubmatch(string(stdout))
+	// Parse port scan result to a map
+	portScanResult, err := portScanResultToMap(furiousOutput, newLog)
 
-	portFoundArray := strings.Split(portFoundString[1], ",")
-
-	if len(portFoundArray) < 1 {
-		newLog.Info("No port found for scanning")
+	if err != nil {
+		return err
 	}
 
-	newLog.Info("RustScan might have overloaded the server, let it rest.")
-	time.Sleep(10 * time.Second)
+	// Get all high severity ports from the results
+	highSeverityPorts := getHighSeverityPorts(portScanResult)
 
-	err = serviceDetection(parsedURL.Host, &portFoundArray, newLog)
-	if err != nil {
-		newLog.Errorf("Error occurred while service detection -> %s", err.Error())
-		return err
+	fmt.Println(portScanResult)
+	fmt.Println(highSeverityPorts)
+
+	if len(portScanResult) > 0 {
+		raiseAlerts(scanData, portScanResult, highSeverityPorts, newLog)
 	}
 
 	return nil
 }
 
-// This function will be used for doing service detection on a specific port
-func serviceDetection(host string, portFoundArray *[]string, newLog *log.Entry) error {
-	newLog.Info("Starting service detection")
+// This function iterates all ports and checks if any high severity port is exposed.
+func getHighSeverityPorts(portScanResult map[int]string) (highSeverityPorts map[int]string) {
 
-	file, _ := os.Open("resource/portscanner_service_probes.json")
-	decoder := json.NewDecoder(file)
+	highSeverityPorts = make(map[int]string)
 
-	portScannerProbeList := []PortScannerProbe{}
-	err := decoder.Decode(&portScannerProbeList)
-	if err != nil {
-		newLog.Panicf("Error occurred while reading config -> %s", err.Error())
-		newLog.Panicf("Please create `config.json` file in proper format")
-		log.Exit(1)
+	for port, service := range portScanResult {
+		for _, highSeverityPort := range HighSeverityPorts {
+			if port == highSeverityPort {
+				highSeverityPorts[port] = service
+			}
+		}
 	}
-	file.Close()
 
-	newLog.Infof("Scanner Probe loaded -> %d", len(portScannerProbeList))
+	return
+}
 
-	for _, port := range *portFoundArray {
-		newLog.Infof("Checking for port -> %s", port)
-		err := checkForPort(host, port, &portScannerProbeList, newLog)
+func portScanResultToMap(furiousOutput string, newLog *log.Entry) (map[int]string, error) {
+
+	portAndServiceRegex := regexp.MustCompile(`(\d+)/(?:tcp|udp)\s+OPEN\s+(\S+)\n`)
+	portAndServiceMatches := portAndServiceRegex.FindAllStringSubmatch(furiousOutput, -1)
+
+	portScanResult := make(map[int]string)
+
+	for _, match := range portAndServiceMatches {
+		port, err := strconv.Atoi(match[1])
+
 		if err != nil {
-			newLog.Errorf("Error occurred while further examining port -> %s", err.Error())
+			newLog.Panicf("Error occurred while converting port from string to int -> %s", err.Error())
+			return make(map[int]string), err
 		}
+
+		service := match[2]
+		portScanResult[port] = service
 	}
 
-	return nil
+	return portScanResult, nil
 }
 
-func checkForPort(host string, port string, portScannerProbeList *[]PortScannerProbe, newLog *log.Entry) error {
+// This function will raise alerts using the alert details passed to it
+func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
 
-	for _, excludedPort := range ExcludedList {
-		if port == excludedPort {
-			newLog.Infof("%s is in excluded list, continuing without service detection.", port)
-			return nil
-		}
-	}
-
-	newLog.Info("Running NULL probe test...")
-	addr, err := net.LookupIP(host)
-	if err != nil {
-		newLog.Errorf("Error occurred while fetching IP from hostname -> %s", err.Error())
-		return err
-	}
-	bannerMatcher(host, addr[0].String(), port, []PortScannerProbe{(*portScannerProbeList)[0]}, "NULL", newLog)
-	return nil
-
-}
-
-func bannerMatcher(host string, addr string, port string, probes []PortScannerProbe, phase string, newLog *log.Entry) error {
-	var rarityInt, timeout int
-	var err error
-	var banner, matchedString string
-	for _, probe := range probes {
-		newLog.Infof("Current probe : %s", probe.Probe.ProbeName)
-
-		if probe.Rarity.Rarity != "" {
-			rarityInt, err = strconv.Atoi(probe.Rarity.Rarity)
-			if err != nil {
-				newLog.Errorf("Error occurred converting rarity to int -> %s", err.Error())
-				continue
-			}
-			if rarityInt > 5 && phase == "Excluded" {
-				return nil
-			}
-		}
-
-		if phase == "NULL" {
-			timeout = 10
-		} else if probe.TotalWaitMs.TotalWaitMs != "" {
-			timeout, err = strconv.Atoi(probe.TotalWaitMs.TotalWaitMs)
-			if err != nil {
-				newLog.Errorf("Error occurred while converting total wait ms to int -> %s", err.Error())
-				continue
-			}
-
-			timeout *= 1000
-		} else {
-			timeout = 6
-		}
-		banner, err = socketConnector(addr, port, probe.Probe.ProbeString, timeout, 0, newLog)
-		if err != nil {
-			continue
-		}
-
-		newLog.Infof("Banner received ->  %s", banner)
-
-		continue
-		// Some regular expression are failing that is why I have cutoff the below statements
-
-		for _, match := range probe.Matches {
-			re := regexp.MustCompile(match.Pattern)
-			matchedString = re.FindString(banner)
-
-			if matchedString != "" {
-				newLog.Infof("%s service is running on port %s, verified by probe matches", match.Service, port)
-			}
-		}
-
-		if len(probe.SoftMatches) > 0 {
-			for _, match := range probe.SoftMatches {
-				re := regexp.MustCompile(match.Pattern)
-				matchedString = re.FindString(banner)
-
-				if matchedString != "" {
-					newLog.Infof("%s service is running on port %s, verified by probe Soft matches", match.Service, port)
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func socketConnector(addr string, port string, probeString string, timeout int, retry int, newLog *log.Entry) (string, error) {
-	newLog.Infof("Connecting to %s with timeout %d", addr+":"+port, timeout)
-	connection, err := net.DialTimeout("tcp", addr+":"+port, time.Duration(timeout)*time.Second)
-	if err != nil {
-		newLog.Errorf("Error occurred while connecting to server -> %s", err.Error())
-		if err == os.ErrDeadlineExceeded {
-			if retry > 0 {
-				return socketConnector(addr, port, probeString, timeout+5, retry, newLog)
-			} else {
-				return "SOCKET_TIMEOUT_EXCEPTION", err
-			}
-		} else {
-			return "SOCKET_EXCEPTION", err
-		}
-	}
-	newLog.Info("Connection to server successful")
-
-	connection.SetDeadline(time.Now().Add(time.Duration(timeout * int(time.Second))))
-	defer connection.Close()
-
-	newLog.Info("Sending Data to server")
-	_, err = connection.Write([]byte(probeString))
-	if err != nil {
-		newLog.Errorf("Error occurred while sending data to server -> %s", err.Error())
-		if err == os.ErrDeadlineExceeded {
-			if retry > 0 {
-				return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
-			} else {
-				return "SOCKET_TIMEOUT_EXCEPTION", err
-			}
-		} else {
-			return "SOCKET_EXCEPTION", err
-		}
-	}
-
-	newLog.Info("Fetching data from server")
-	buffer := make([]byte, 1024)
-	mLen, err := connection.Read(buffer)
-	if err != nil {
-		newLog.Errorf("Error occurred while reading data from server -> %s", err.Error())
-		if err == os.ErrDeadlineExceeded {
-			if retry > 0 {
-				return socketConnector(addr, port, probeString, timeout+5, retry-1, newLog)
-			} else {
-				return "SOCKET_TIMEOUT_EXCEPTION", err
-			}
-		} else {
-			return "SOCKET_EXCEPTION", err
-		}
-	}
-
-	return strings.Trim(string(buffer[:mLen]), "\r\n"), nil
-}
-
-// This function can be used for raising alerts in port scanning
-func raiseAlert(scanData utils.ScanData, newLog *log.Entry) error {
-	newLog.Info("Raising alert for high severity port")
 	newAlertBody := AlertBody{
-		Name:        "Target Has Ports Open for Critical Services",
-		Description: "The security assessment has identified that the target has open ports for critical services. It is recommended that the client reviews all open ports and takes necessary steps to secure them.",
-		Solution:    "In particular, any unused ports should be shut down to reduce the attack surface and minimize the potential risk of unauthorized access or exploitation. Proper port management plays a crucial role in maintaining a secure network environment.",
-		Evidence:    "These ports were found to be open: 22, 21",
-		Risk:        "Medium",
-		Confidence:  "High",
-		AlertRef:    "portscanner_9027-1",
-		PluginId:    "9027",
-		Id:          1,
-		AuditPhase:  "tool",
+		Name:        name,
+		Description: desc,
+		Solution:    soln,
+		Evidence:    evid,
+		Risk:        risk,
+		Confidence:  conf,
+		AlertRef:    alertRef,
+		PluginId:    pluginId,
+		Id:          id,
+		AuditPhase:  auditPhase,
 	}
 
 	newAlertContext := AlertContext{
@@ -256,6 +126,58 @@ func raiseAlert(scanData utils.ScanData, newLog *log.Entry) error {
 	}
 
 	utils.SendRequestToWebhook(&scanData, newLog, "alert", resp)
+
+	return nil
+}
+
+// This function is to initialise alerts for portscanner service.
+func raiseAlerts(scanData utils.ScanData, portScanResult map[int]string, highSeverityPorts map[int]string, newLog *log.Entry) error {
+
+	newLog.Info("Raising low severity alert for detected ports.")
+	portScanResultJSON, err := json.Marshal(portScanResult)
+
+	if err != nil {
+		newLog.Errorf("Error occurred while marshalling port scan result.")
+	}
+
+	var (
+		id         int    = 1
+		name       string = "[Recommendation] Review Open Ports"
+		desc       string = "The security assessment has identified open ports on the target system. It is recommended to thoroughly review these open ports to ensure that only necessary services are accessible."
+		soln       string = "Unnecessary or unused ports should be closed to reduce the attack surface and mitigate potential risks associated with unauthorized access or exploitation."
+		evid       string = string(portScanResultJSON)
+		risk       string = "Low"
+		conf       string = "High"
+		pluginId   string = "9027"
+		alertRef   string = "portscanner_9027-1"
+		auditPhase string = "tool"
+	)
+
+	raiseAlert(scanData, name, desc, soln, evid, risk, conf, alertRef, pluginId, id, auditPhase, newLog)
+
+	if len(highSeverityPorts) < 1 {
+		return nil
+	}
+
+	newLog.Info("Raising medium severity alert for critical ports.")
+	highSeverityPortsJSON, err := json.Marshal(highSeverityPorts)
+
+	if err != nil {
+		newLog.Errorf("Error occurred while marshalling port scan result.")
+	}
+
+	id = 1
+	name = "Target Has Ports Open for Critical Services"
+	desc = "The security assessment has identified that the target has open ports for critical services. It is recommended that the client reviews all open ports and takes necessary steps to secure them."
+	soln = "In particular, any unused ports should be shut down to reduce the attack surface and minimize the potential risk of unauthorized access or exploitation. Proper port management plays a crucial role in maintaining a secure network environment."
+	evid = string(highSeverityPortsJSON)
+	risk = "Medium"
+	conf = "High"
+	pluginId = "9027"
+	alertRef = "portscanner_9027-2"
+	auditPhase = "tool"
+
+	raiseAlert(scanData, name, desc, soln, evid, risk, conf, alertRef, pluginId, id, auditPhase, newLog)
 
 	return nil
 }
