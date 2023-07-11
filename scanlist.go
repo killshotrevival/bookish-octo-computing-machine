@@ -1,10 +1,9 @@
 package main
 
 import (
-	portscanner "endgame/port-scanner"
 	"endgame/utils"
 
-	// portscanner "endgame/port-scanner"
+	portscanner "endgame/port-scanner"
 	subdomaintakeover "endgame/subdomain-takeover"
 )
 
