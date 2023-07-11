@@ -1,9 +1,11 @@
 package main
 
 import (
+	portscanner "endgame/port-scanner"
 	"endgame/utils"
 
-	portscanner "endgame/port-scanner"
+	// portscanner "endgame/port-scanner"
+	subdomaintakeover "endgame/subdomain-takeover"
 )
 
 // This function can be used for generating a list of all audit functions to be executed
@@ -12,6 +14,7 @@ func InitializeAuditFunctions() ([]func(utils.ScanData) error, error) {
 
 	allAwsAuditFunctions = append(allAwsAuditFunctions,
 		portscanner.StartScan,
+		subdomaintakeover.StartScan,
 	)
 
 	return allAwsAuditFunctions, nil

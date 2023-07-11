@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Added
+- Initializes subdomain takeover.
+
 ## [0.0.1] - 2023-06-30
 - Docker image tag: `0.0.1-d3bb22b`
 #### Added

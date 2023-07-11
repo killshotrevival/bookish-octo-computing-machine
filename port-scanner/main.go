@@ -101,7 +101,7 @@ func portScanResultToMap(furiousOutput string, newLog *log.Entry) (map[int]strin
 // This function will raise alerts using the alert details passed to it
 func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
 
-	newAlertBody := AlertBody{
+	newAlertBody := utils.AlertBody{
 		Name:        name,
 		Description: desc,
 		Solution:    soln,
@@ -114,7 +114,7 @@ func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, 
 		AuditPhase:  auditPhase,
 	}
 
-	newAlertContext := AlertContext{
+	newAlertContext := utils.AlertContext{
 		Alert: newAlertBody,
 		Tags:  []byte(`{"fetchFromAlert": true}`),
 	}
