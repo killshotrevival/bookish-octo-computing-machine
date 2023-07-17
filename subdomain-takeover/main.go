@@ -15,6 +15,8 @@ import (
 // This function can be used for starting subdomain takeover scan on the host of context.target endpoint
 func StartScan(scanData utils.ScanData) error {
 
+	var subdomain, service string
+
 	newLog := log.WithFields(log.Fields{
 		"name": "subdomain takeover",
 	})
@@ -45,19 +47,19 @@ func StartScan(scanData utils.ScanData) error {
 
 	subdomains := strings.Split(string(stdout), "\n")
 
-	// subdomains = append(subdomains, strings.Split(string(stdout), "\n")...)
 	vulnerableSubdomains := make(map[string]string)
 
 	var fingerprints []subjack.Fingerprints
-	config, _ := ioutil.ReadFile("/home/astra/Desktop/fingerprints.json")
+	config, _ := ioutil.ReadFile("/temp/fingerprints.json")
 	json.Unmarshal(config, &fingerprints)
 
 	newLog.Infof("%d subdomains found", len(subdomains))
 	newLog.Infof("subdomains found -> %s", subdomains)
+
 	for i := 0; i < len(subdomains); i++ {
-		subdomain := subdomains[i]
+		subdomain = subdomains[i]
 		newLog.Infof("%d. Testing subdomain takeover on %s", i, subdomain)
-		service := subjack.Identify(subdomain, false, false, 10, fingerprints)
+		service = subjack.Identify(subdomain, false, false, 10, fingerprints)
 
 		if service != "" {
 			newLog.Infof("\n[ALERT] Subdomain takeover possible on %s\n", subdomain)
@@ -67,14 +69,14 @@ func StartScan(scanData utils.ScanData) error {
 	}
 
 	if len(vulnerableSubdomains) > 0 {
-		raiseAlerts(scanData, vulnerableSubdomains, newLog)
+		raiseAlerts(&scanData, vulnerableSubdomains, newLog)
 	}
 
 	return nil
 }
 
 // This function will raise alerts using the alert details passed to it
-func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
+func raiseAlert(scanData *utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
 
 	newAlertBody := utils.AlertBody{
 		Name:        name,
@@ -100,13 +102,13 @@ func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, 
 		newLog.Errorf("Error occurred while marshalling alert context")
 	}
 
-	utils.SendRequestToWebhook(&scanData, newLog, "alert", resp)
+	utils.SendRequestToWebhook(scanData, newLog, "alert", resp)
 
 	return nil
 }
 
 // This function is to initialise alerts for portscanner service.
-func raiseAlerts(scanData utils.ScanData, vulnerableSubdomains map[string]string, newLog *log.Entry) error {
+func raiseAlerts(scanData *utils.ScanData, vulnerableSubdomains map[string]string, newLog *log.Entry) error {
 
 	newLog.Info("Raising high severity alerts for subdomain takeover.")
 	vulnerableSubdomainsJSON, err := json.Marshal(vulnerableSubdomains)

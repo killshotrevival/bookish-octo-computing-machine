@@ -30,6 +30,7 @@ func StartScan(scanData utils.ScanData) error {
 	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", parsedURL.Host)
 	stdout, err := cmd.Output()
 
+	furiousOutput := string(stdout)
 	if strings.Contains(string(stdout), "no such host") {
 		newLog.Errorf("Host %s was not found, can't run port scanner.", parsedURL.Host)
 		return nil
@@ -39,8 +40,6 @@ func StartScan(scanData utils.ScanData) error {
 		newLog.Panicf("Error occurred while furious -> %s", err.Error())
 		return err
 	}
-
-	furiousOutput := string(stdout)
 
 	newLog.Infof("Response found -> %s", furiousOutput)
 
