@@ -31,7 +31,8 @@ type Meta struct {
 }
 
 type Context struct {
-	Target string `json:"target"`
+	Target            string `json:"target"`
+	ScanScopeCoverage string `json:"scopeCoverage"`
 }
 
 type SlackRequest struct {

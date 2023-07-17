@@ -25,33 +25,42 @@ func StartScan(scanData utils.ScanData) error {
 		panic(err)
 	}
 
-	domainArray := strings.Split(parsedURL.Host, ".")
-	domain := domainArray[len(domainArray)-2] + "." + domainArray[len(domainArray)-1]
+	domain := parsedURL.Host
 
-	newLog.Infof("Domain name found -> %s", domain)
+	if scanData.Context.ScanScopeCoverage == "full_domain" {
+
+		domainArray := strings.Split(parsedURL.Host, ".")
+		domain = domainArray[len(domainArray)-2] + "." + domainArray[len(domainArray)-1]
+	}
+
+	newLog.Infof("Finding subdomains for -> %s", domain)
 
 	cmd := exec.Command("subfinder", "-d", domain, "-silent")
 	stdout, err := cmd.Output()
-
-	subdomains := strings.Split(string(stdout), "\n")
-	vulnerableSubdomains := make(map[string]string)
 
 	if err != nil {
 		newLog.Panicf("Error occurred while running subfinder -> %s", err.Error())
 		return err
 	}
 
-	newLog.Infof("Response found -> %s", subdomains)
+	subdomains := strings.Split(string(stdout), "\n")
+
+	// subdomains = append(subdomains, strings.Split(string(stdout), "\n")...)
+	vulnerableSubdomains := make(map[string]string)
 
 	var fingerprints []subjack.Fingerprints
-	config, _ := ioutil.ReadFile("/temp/fingerprints.json")
+	config, _ := ioutil.ReadFile("/home/astra/Desktop/fingerprints.json")
 	json.Unmarshal(config, &fingerprints)
 
+	newLog.Infof("%d subdomains found", len(subdomains))
+	newLog.Infof("subdomains found -> %s", subdomains)
 	for i := 0; i < len(subdomains); i++ {
 		subdomain := subdomains[i]
+		newLog.Infof("%d. Testing subdomain takeover on %s", i, subdomain)
 		service := subjack.Identify(subdomain, false, false, 10, fingerprints)
 
 		if service != "" {
+			newLog.Infof("\n[ALERT] Subdomain takeover possible on %s\n", subdomain)
 			service = strings.ToLower(service)
 			vulnerableSubdomains[subdomain] = service
 		}

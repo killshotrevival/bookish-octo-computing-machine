@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
-	"time"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -26,17 +26,21 @@ func StartScan(scanData utils.ScanData) error {
 		panic(err)
 	}
 	newLog.Infof("Domain name found -> %s", parsedURL.Host)
-	time.Sleep(2 * time.Minute)
 
 	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", parsedURL.Host)
 	stdout, err := cmd.Output()
 
-	furiousOutput := string(stdout)
+	if strings.Contains(string(stdout), "no such host") {
+		newLog.Errorf("Host %s was not found, can't run port scanner.", parsedURL.Host)
+		return nil
+	}
 
 	if err != nil {
 		newLog.Panicf("Error occurred while furious -> %s", err.Error())
 		return err
 	}
+
+	furiousOutput := string(stdout)
 
 	newLog.Infof("Response found -> %s", furiousOutput)
 
