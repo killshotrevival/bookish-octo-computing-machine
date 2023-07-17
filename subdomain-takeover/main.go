@@ -50,7 +50,7 @@ func StartScan(scanData utils.ScanData) error {
 	vulnerableSubdomains := make(map[string]string)
 
 	var fingerprints []subjack.Fingerprints
-	config, _ := ioutil.ReadFile("/temp/fingerprints.json")
+	config, _ := ioutil.ReadFile("/fingerprints.json")
 	json.Unmarshal(config, &fingerprints)
 
 	newLog.Infof("%d subdomains found", len(subdomains))

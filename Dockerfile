@@ -10,5 +10,5 @@ COPY --from=registry.digitalocean.com/getastra/subfinder:0.0.1 /usr/local/bin/su
 FROM --platform=linux/amd64 registry.digitalocean.com/getastra/furious:0.0.1
 COPY --from=build /temp/endgame /endgame
 COPY ./resources/subdomain-takeover/subfinder /usr/local/bin/subfinder
-COPY ./resources/subdomain-takeover/fingerprints.json /temp/fingerprints.json
+COPY ./resources/subdomain-takeover/fingerprints.json /fingerprints.json
 CMD [ "/endgame" ]
