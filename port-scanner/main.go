@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
-	"time"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -26,12 +26,15 @@ func StartScan(scanData utils.ScanData) error {
 		panic(err)
 	}
 	newLog.Infof("Domain name found -> %s", parsedURL.Host)
-	time.Sleep(2 * time.Minute)
 
 	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", parsedURL.Host)
 	stdout, err := cmd.Output()
 
 	furiousOutput := string(stdout)
+	if strings.Contains(string(stdout), "no such host") {
+		newLog.Errorf("Host %s was not found, can't run port scanner.", parsedURL.Host)
+		return nil
+	}
 
 	if err != nil {
 		newLog.Panicf("Error occurred while furious -> %s", err.Error())
@@ -101,7 +104,7 @@ func portScanResultToMap(furiousOutput string, newLog *log.Entry) (map[int]strin
 // This function will raise alerts using the alert details passed to it
 func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
 
-	newAlertBody := AlertBody{
+	newAlertBody := utils.AlertBody{
 		Name:        name,
 		Description: desc,
 		Solution:    soln,
@@ -114,7 +117,7 @@ func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, 
 		AuditPhase:  auditPhase,
 	}
 
-	newAlertContext := AlertContext{
+	newAlertContext := utils.AlertContext{
 		Alert: newAlertBody,
 		Tags:  []byte(`{"fetchFromAlert": true}`),
 	}

@@ -59,12 +59,12 @@ Scan Id: %s`, errorString, scanData.Meta.ScanId)
 
 	resp, err := http.Post("http://"+scanData.ApiService+"/api/dast/slack_request", "application/json", responseBody)
 
-	newLog.Infof("Response status received -> %s for slack alert", resp.Status)
-
 	if err != nil {
 		newLog.Errorf("Error occurred while sending alert on slack > %s", err.Error())
 		return err
 	}
+
+	newLog.Infof("Response status received -> %s for slack alert", resp.Status)
 
 	return nil
 }
