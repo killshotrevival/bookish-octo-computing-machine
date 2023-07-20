@@ -8,7 +8,7 @@ Note: All the new scanning functionality added should be appended under `scanner
 
 ### Docker build command
 
-```
+```bash
 docker build . -t registry.digitalocean.com/getastra/endgame:<version to build>
 ```
 
