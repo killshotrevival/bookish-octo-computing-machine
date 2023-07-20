@@ -58,17 +58,22 @@ func StartScan(scanData utils.ScanData) error {
 
 	for i := 0; i < len(subdomains); i++ {
 		subdomain = subdomains[i]
-		newLog.Infof("%d. Testing subdomain takeover on %s", i, subdomain)
-		service = subjack.Identify(subdomain, false, false, 10, fingerprints)
+		if subdomain != "" {
+			newLog.Infof("%d. Testing subdomain takeover on %s", i, subdomain)
+			service = subjack.Identify(subdomain, false, false, 10, fingerprints)
 
-		if service != "" {
-			newLog.Infof("\n[ALERT] Subdomain takeover possible on %s\n", subdomain)
-			service = strings.ToLower(service)
-			vulnerableSubdomains[subdomain] = service
+			if service != "" {
+				newLog.Infof("\n[ALERT] Subdomain takeover possible on %s\n", subdomain)
+				service = strings.ToLower(service)
+				vulnerableSubdomains[subdomain] = service
+			}
+		} else {
+			newLog.Error("Empty string found in sub-domain list")
 		}
 	}
 
 	if len(vulnerableSubdomains) > 0 {
+		newLog.Infof("Raising alerts for %d vulnerable subdomains", len(vulnerableSubdomains))
 		raiseAlerts(&scanData, vulnerableSubdomains, newLog)
 	}
 
