@@ -53,7 +53,10 @@ func StartScan(scanData *utils.ScanData) error {
 
 	var fingerprints []subjack.Fingerprints
 
+	////////////
 	// Removed the support for `ioutil` as it is a deprecated package
+	////////////
+
 	// config, _ := ioutil.ReadFile("fingerprints.json")
 	// json.Unmarshal(config, &fingerprints)
 

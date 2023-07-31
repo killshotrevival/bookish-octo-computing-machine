@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Send all subdomains found on a custom webhook on `subdomains.found`
 - Run port scanning on all the sub-domains is `scopeCoverage` allows.
 
+#### Removed
+- Removed the support for `ioutil` as it is a deprecated package
+
 ## [0.0.2] - 2023-07-20
 - Docker image tag: `0.0.2-b163ef5`
 #### Added

@@ -63,11 +63,7 @@ func main() {
 
 	utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
 
-	defer func() {
-		if err := recover(); err != nil {
-			utils.SendCompleteScanRequest(&configuration, newLog)
-		}
-	}()
+	defer utils.SendCompleteScanRequest(&configuration, newLog)
 
 	err = StartScansInRoutine(&configuration)
 
