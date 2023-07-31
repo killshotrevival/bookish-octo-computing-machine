@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ## [0.0.2] - 2023-07-20
-- Docker image tag: `0.0.2-f6292f0`
+- Docker image tag: `0.0.2-b163ef5`
 ### Added
 - Initializes subdomain takeover.
 
