@@ -2,9 +2,10 @@ package subdomaintakeover
 
 import (
 	"encoding/json"
+	portScanner "endgame/port-scanner"
 	"endgame/utils"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -13,9 +14,10 @@ import (
 )
 
 // This function can be used for starting subdomain takeover scan on the host of context.target endpoint
-func StartScan(scanData utils.ScanData) error {
+func StartScan(scanData *utils.ScanData) error {
 
 	var subdomain, service string
+	portScanningDoneOnTarget := false
 
 	newLog := log.WithFields(log.Fields{
 		"name": "subdomain takeover",
@@ -50,11 +52,27 @@ func StartScan(scanData utils.ScanData) error {
 	vulnerableSubdomains := make(map[string]string)
 
 	var fingerprints []subjack.Fingerprints
-	config, _ := ioutil.ReadFile("/fingerprints.json")
-	json.Unmarshal(config, &fingerprints)
+
+	// Removed the support for `ioutil` as it is a deprecated package
+	// config, _ := ioutil.ReadFile("fingerprints.json")
+	// json.Unmarshal(config, &fingerprints)
+
+	config, _ := os.Open("/fingerprints.json")
+	decoder := json.NewDecoder(config)
+	err = decoder.Decode(&fingerprints)
+	if err != nil {
+		newLog.Panicf("Error occurred while reading config -> %s", err.Error())
+	}
+	config.Close()
 
 	newLog.Infof("%d subdomains found", len(subdomains))
 	newLog.Infof("subdomains found -> %s", subdomains)
+
+	resp, err := json.Marshal(subdomains)
+	if err != nil {
+		newLog.Errorf("Error occurred while marshalling alert context")
+	}
+	utils.SendRequestToWebhook(scanData, newLog, "subdomains.found", resp)
 
 	for i := 0; i < len(subdomains); i++ {
 		subdomain = subdomains[i]
@@ -67,14 +85,36 @@ func StartScan(scanData utils.ScanData) error {
 				service = strings.ToLower(service)
 				vulnerableSubdomains[subdomain] = service
 			}
+
+			if scanData.Context.ScanScopeCoverage != "exact_uri" {
+				newLog.Info("Running port scanning on the subdomain")
+				err = portScanner.StartScan(scanData, subdomain)
+				if err != nil {
+					newLog.Errorf("Error occurred while port scanning on subdomain %s | %s", subdomain, err.Error())
+				}
+				if subdomain == scanData.Context.Target {
+					portScanningDoneOnTarget = true
+				}
+
+			} else {
+				newLog.Info("Not running port scanning as scope coverage is `exact_uri`")
+			}
 		} else {
 			newLog.Error("Empty string found in sub-domain list")
 		}
 	}
 
+	// There are some chances that the target uri can be found in subdomains list
+	if !portScanningDoneOnTarget {
+		err = portScanner.StartScan(scanData, scanData.Context.Target)
+		if err != nil {
+			newLog.Errorf("Error occurred while port scanning on Main domain %s | %s", scanData.Context.Target, err.Error())
+		}
+	}
+
 	if len(vulnerableSubdomains) > 0 {
 		newLog.Infof("Raising alerts for %d vulnerable subdomains", len(vulnerableSubdomains))
-		raiseAlerts(&scanData, vulnerableSubdomains, newLog)
+		raiseAlerts(scanData, vulnerableSubdomains, newLog)
 	}
 
 	return nil

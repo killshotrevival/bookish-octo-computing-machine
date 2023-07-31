@@ -14,14 +14,14 @@ import (
 )
 
 // This function can be used for starting a port scanner on the context.target endpoint
-func StartScan(scanData utils.ScanData) error {
+func StartScan(scanData *utils.ScanData, host string) error {
 
 	newLog := log.WithFields(log.Fields{
 		"name": "port scanner",
 	})
 	newLog.Info("Starting new port scanner")
 
-	parsedURL, err := url.Parse(scanData.Context.Target)
+	parsedURL, err := url.Parse(host)
 	if err != nil {
 		panic(err)
 	}
@@ -102,7 +102,7 @@ func portScanResultToMap(furiousOutput string, newLog *log.Entry) (map[int]strin
 }
 
 // This function will raise alerts using the alert details passed to it
-func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
+func raiseAlert(scanData *utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
 
 	newAlertBody := utils.AlertBody{
 		Name:        name,
@@ -128,13 +128,13 @@ func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, 
 		newLog.Errorf("Error occurred while marshalling alert context")
 	}
 
-	utils.SendRequestToWebhook(&scanData, newLog, "alert", resp)
+	utils.SendRequestToWebhook(scanData, newLog, "alert", resp)
 
 	return nil
 }
 
 // This function is to initialise alerts for portscanner service.
-func raiseAlerts(scanData utils.ScanData, portScanResult map[int]string, highSeverityPorts map[int]string, newLog *log.Entry) error {
+func raiseAlerts(scanData *utils.ScanData, portScanResult map[int]string, highSeverityPorts map[int]string, newLog *log.Entry) error {
 
 	newLog.Info("Raising low severity alert for detected ports.")
 	portScanResultJSON, err := json.Marshal(portScanResult)

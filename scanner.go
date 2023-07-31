@@ -28,8 +28,8 @@ func StartScansInRoutine(scanData *utils.ScanData) error {
 	for i := 0; i < len(allAwsAuditFunctions); i++ {
 		guard <- struct{}{}
 		wg.Add(1)
-		go func(n func(utils.ScanData) error) {
-			n(*scanData)
+		go func(n func(*utils.ScanData) error) {
+			n(scanData)
 			<-guard
 			wg.Done()
 		}(allAwsAuditFunctions[i])
