@@ -29,7 +29,6 @@ func StartScan(scanData *utils.ScanData, host string) error {
 	// 	// panic(err)
 	// 	return err
 	// }
-	newLog.Infof("Domain name found -> %s", host)
 
 	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", host)
 	stdout, err := cmd.Output()
@@ -152,7 +151,7 @@ func raiseAlerts(scanData *utils.ScanData, portScanResult map[int]string, highSe
 		name       string = "[Recommendation] Review Open Ports"
 		desc       string = "The security assessment has identified open ports on the target system. It is recommended to thoroughly review these open ports to ensure that only necessary services are accessible."
 		soln       string = "Unnecessary or unused ports should be closed to reduce the attack surface and mitigate potential risks associated with unauthorized access or exploitation."
-		evid       string = fmt.Sprintf("Port found on {%s} are %b", host, portScanResultJSON)
+		evid       string = fmt.Sprintf("Port found on {%s} are %s", host, portScanResultJSON)
 		risk       string = "Low"
 		conf       string = "High"
 		pluginId   string = "9027"
@@ -177,7 +176,7 @@ func raiseAlerts(scanData *utils.ScanData, portScanResult map[int]string, highSe
 	name = "Target Has Ports Open for Critical Services"
 	desc = "The security assessment has identified that the target has open ports for critical services. It is recommended that the client reviews all open ports and takes necessary steps to secure them."
 	soln = "In particular, any unused ports should be shut down to reduce the attack surface and minimize the potential risk of unauthorized access or exploitation. Proper port management plays a crucial role in maintaining a secure network environment."
-	evid = fmt.Sprintf("Port found on {%s} are %b", host, highSeverityPortsJSON)
+	evid = fmt.Sprintf("Port found on {%s} are %s", host, highSeverityPortsJSON)
 	risk = "Medium"
 	conf = "High"
 	pluginId = "9027"
