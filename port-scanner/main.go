@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"endgame/utils"
 	"fmt"
-	"net/url"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -14,25 +13,29 @@ import (
 )
 
 // This function can be used for starting a port scanner on the context.target endpoint
-func StartScan(scanData utils.ScanData) error {
+func StartScan(scanData *utils.ScanData, host string) error {
 
 	newLog := log.WithFields(log.Fields{
 		"name": "port scanner",
 	})
-	newLog.Info("Starting new port scanner")
+	newLog.Infof("Starting new port scanner on -> %s", host)
 
-	parsedURL, err := url.Parse(scanData.Context.Target)
-	if err != nil {
-		panic(err)
-	}
-	newLog.Infof("Domain name found -> %s", parsedURL.Host)
+	////////////
+	// As port scanning will run from subdomain takeover, there is no need to parse url  anymore.
+	////////////
 
-	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", parsedURL.Host)
+	// parsedURL, err := url.Parse(host)
+	// if err != nil {
+	// 	// panic(err)
+	// 	return err
+	// }
+
+	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", host)
 	stdout, err := cmd.Output()
 
 	furiousOutput := string(stdout)
 	if strings.Contains(string(stdout), "no such host") {
-		newLog.Errorf("Host %s was not found, can't run port scanner.", parsedURL.Host)
+		newLog.Errorf("Host %s was not found, can't run port scanner.", host)
 		return nil
 	}
 
@@ -57,7 +60,7 @@ func StartScan(scanData utils.ScanData) error {
 	fmt.Println(highSeverityPorts)
 
 	if len(portScanResult) > 0 {
-		raiseAlerts(scanData, portScanResult, highSeverityPorts, newLog)
+		raiseAlerts(scanData, portScanResult, highSeverityPorts, newLog, host)
 	}
 
 	return nil
@@ -102,7 +105,7 @@ func portScanResultToMap(furiousOutput string, newLog *log.Entry) (map[int]strin
 }
 
 // This function will raise alerts using the alert details passed to it
-func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
+func raiseAlert(scanData *utils.ScanData, name string, desc string, soln string, evid string, risk string, conf string, alertRef string, pluginId string, id int, auditPhase string, newLog *log.Entry) error {
 
 	newAlertBody := utils.AlertBody{
 		Name:        name,
@@ -128,13 +131,13 @@ func raiseAlert(scanData utils.ScanData, name string, desc string, soln string, 
 		newLog.Errorf("Error occurred while marshalling alert context")
 	}
 
-	utils.SendRequestToWebhook(&scanData, newLog, "alert", resp)
+	utils.SendRequestToWebhook(scanData, newLog, "alert", resp)
 
 	return nil
 }
 
 // This function is to initialise alerts for portscanner service.
-func raiseAlerts(scanData utils.ScanData, portScanResult map[int]string, highSeverityPorts map[int]string, newLog *log.Entry) error {
+func raiseAlerts(scanData *utils.ScanData, portScanResult map[int]string, highSeverityPorts map[int]string, newLog *log.Entry, host string) error {
 
 	newLog.Info("Raising low severity alert for detected ports.")
 	portScanResultJSON, err := json.Marshal(portScanResult)
@@ -148,7 +151,7 @@ func raiseAlerts(scanData utils.ScanData, portScanResult map[int]string, highSev
 		name       string = "[Recommendation] Review Open Ports"
 		desc       string = "The security assessment has identified open ports on the target system. It is recommended to thoroughly review these open ports to ensure that only necessary services are accessible."
 		soln       string = "Unnecessary or unused ports should be closed to reduce the attack surface and mitigate potential risks associated with unauthorized access or exploitation."
-		evid       string = string(portScanResultJSON)
+		evid       string = fmt.Sprintf("Port found on {%s} are %s", host, portScanResultJSON)
 		risk       string = "Low"
 		conf       string = "High"
 		pluginId   string = "9027"
@@ -173,7 +176,7 @@ func raiseAlerts(scanData utils.ScanData, portScanResult map[int]string, highSev
 	name = "Target Has Ports Open for Critical Services"
 	desc = "The security assessment has identified that the target has open ports for critical services. It is recommended that the client reviews all open ports and takes necessary steps to secure them."
 	soln = "In particular, any unused ports should be shut down to reduce the attack surface and minimize the potential risk of unauthorized access or exploitation. Proper port management plays a crucial role in maintaining a secure network environment."
-	evid = string(highSeverityPortsJSON)
+	evid = fmt.Sprintf("Port found on {%s} are %s", host, highSeverityPortsJSON)
 	risk = "Medium"
 	conf = "High"
 	pluginId = "9027"
