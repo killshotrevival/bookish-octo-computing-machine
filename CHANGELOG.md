@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## [0.0.3] - 2023-08-07
+- Docker image tag: `0.0.3-7d578c6`
 #### Added
 - Send all subdomains found on a custom webhook on `subdomains.found`
 - Run port scanning on all the sub-domains is `scopeCoverage` allows.
