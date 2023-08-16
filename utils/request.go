@@ -80,9 +80,9 @@ func SendCompleteScanRequest(scanData *ScanData, newLog *log.Entry) {
 	}
 	newLog.Info("Request created successfully")
 	resp, err := client.Do(req)
-	newLog.Infof("Complete scan request status received -> %s", resp.Status)
 	if err != nil {
-		panic(fmt.Sprintf("Error occurred while sending complete scan request -> %s", err.Error()))
+		newLog.Errorf(fmt.Sprintf("Error occurred while sending complete scan request -> %s", err.Error()))
+		return
 	}
-	defer resp.Body.Close()
+	newLog.Infof("Complete scan request status received -> %s", resp.Status)
 }

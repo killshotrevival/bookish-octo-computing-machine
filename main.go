@@ -57,13 +57,14 @@ func main() {
 
 	defer func() {
 		if err := recover(); err != nil {
+			newLog.Errorf("Panic occurred in main thread -> %s", err)
 			utils.SendRequestToSlack(&configuration, newLog, err)
 		}
 	}()
 
 	utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
-
 	defer utils.SendCompleteScanRequest(&configuration, newLog)
+	go utils.SendHealthWebhook(&configuration, newLog)
 
 	err = StartScansInRoutine(&configuration)
 
