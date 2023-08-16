@@ -40,7 +40,7 @@ func StartScan(scanData *utils.ScanData, host string) error {
 	}
 
 	if err != nil {
-		newLog.Panicf("Error occurred while furious -> %s", err.Error())
+		newLog.Errorf("Error occurred while furious -> %s", err.Error())
 		return err
 	}
 

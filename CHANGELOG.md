@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+#### Fixed
+- Don't panic if `furious` command exited with error, instead print the error.
 #### Added
 - Health update on webhook
 
