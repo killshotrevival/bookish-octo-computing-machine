@@ -93,7 +93,7 @@ func portScanResultToMap(furiousOutput string, newLog *log.Entry) (map[int]strin
 		port, err := strconv.Atoi(match[1])
 
 		if err != nil {
-			newLog.Panicf("Error occurred while converting port from string to int -> %s", err.Error())
+			newLog.Errorf("Error occurred while converting port from string to int -> %s", err.Error())
 			return make(map[int]string), err
 		}
 

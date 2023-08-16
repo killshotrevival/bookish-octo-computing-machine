@@ -43,7 +43,7 @@ func StartScan(scanData *utils.ScanData) error {
 	stdout, err := cmd.Output()
 
 	if err != nil {
-		newLog.Panicf("Error occurred while running subfinder -> %s", err.Error())
+		newLog.Errorf("Error occurred while running subfinder -> %s", err.Error())
 		return err
 	}
 
@@ -64,7 +64,8 @@ func StartScan(scanData *utils.ScanData) error {
 	decoder := json.NewDecoder(config)
 	err = decoder.Decode(&fingerprints)
 	if err != nil {
-		newLog.Panicf("Error occurred while reading config -> %s", err.Error())
+		newLog.Errorf("Error occurred while reading config -> %s", err.Error())
+		return err
 	}
 	config.Close()
 
