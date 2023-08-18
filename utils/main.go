@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -64,4 +65,16 @@ func LoadScanData(scanData *ScanData, newLog *log.Entry) {
 // This function can be used for validating the scan data loaded
 func ValidateScanData(scanData *ScanData) error {
 	return nil
+}
+
+// This function can be used for sending health check alert on webhook every 10 seconds.
+func SendHealthWebhook(configuration *ScanData, newLog *log.Entry) {
+	newLog.Info("Starting health check webhook go routine")
+	uptimeTicker := time.NewTicker(10 * time.Second)
+
+	for {
+		newLog.Info("Sending health check webhook")
+		<-uptimeTicker.C
+		SendRequestToWebhook(configuration, newLog, "scan.health", []byte(`{"reason":"Alive and healthy"}`))
+	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 
 	"endgame/utils"
@@ -39,9 +40,8 @@ func main() {
 
 		err := decoder.Decode(&configuration)
 		if err != nil {
-			newLog.Panicf("Error occurred while reading config -> %s", err.Error())
-			newLog.Panicf("Please create `config.json` file in proper format")
-			log.Exit(1)
+			newLog.Errorf("Please create `config.json` file in proper format")
+			panic(fmt.Sprintf("Error occurred while reading config -> %s", err.Error()))
 		}
 		file.Close()
 		configuration.Meta.ScanId = scanId
@@ -50,26 +50,25 @@ func main() {
 	newLog.Info("Validating configuration loaded")
 	err := utils.ValidateScanData(&configuration)
 	if err != nil {
-		newLog.Panicf("Invalid configuration found -> %s", err.Error())
-		log.Exit(1)
+		panic(fmt.Sprintf("Invalid configuration found -> %s", err.Error()))
 	}
 	newLog.Info("Configuration loaded successfully, sending start scan request on webhook")
 
 	defer func() {
 		if err := recover(); err != nil {
+			newLog.Errorf("Panic occurred in main thread -> %s", err)
 			utils.SendRequestToSlack(&configuration, newLog, err)
 		}
+		utils.SendCompleteScanRequest(&configuration, newLog)
 	}()
 
 	utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
-
-	defer utils.SendCompleteScanRequest(&configuration, newLog)
+	go utils.SendHealthWebhook(&configuration, newLog)
 
 	err = StartScansInRoutine(&configuration)
 
 	if err != nil {
-		newLog.Panicf("Error occurred while running scans -> %s", err.Error())
-		log.Exit(1)
+		panic(fmt.Sprintf("Error occurred while running scans -> %s", err.Error()))
 	}
 	newLog.Info("All scans completed successfully exiting")
 }

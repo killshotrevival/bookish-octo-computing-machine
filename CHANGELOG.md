@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+#### Fixed
+- Don't panic if `furious` command exited with error, instead print the error.
+#### Added
+- Health update on webhook
+
 ## [0.0.3] - 2023-08-07
 - Docker image tag: `0.0.3-7d578c6`
 #### Added
