@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## [0.0.4] - 2023-08-18
+- Docker image tag: `0.0.4-68c1832`
 #### Fixed
 - Don't panic if `furious` command exited with error, instead print the error.
 #### Added
