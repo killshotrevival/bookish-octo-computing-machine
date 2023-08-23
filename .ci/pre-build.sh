@@ -26,6 +26,7 @@ then
     fi
 else
     echo "Not checking commit message as the pipeline source is web"
+    FINAL_VERSION="$VERSION"
 fi
 
 if [[ "$FINAL_VERSION" == "Version Here" ]]
