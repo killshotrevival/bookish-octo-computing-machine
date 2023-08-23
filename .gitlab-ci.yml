@@ -1,0 +1,62 @@
+workflow:
+  rules:
+    - if: '$CI_COMMIT_MESSAGE =~ /^\[deploy\] /'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - when: never
+
+variables:
+  ENV:
+    value: "staging"
+    description: "Name of the environment to use. Possible values production/staging."
+  VERSION:
+    value: "Version Here"
+    description: "Version of the new docker image"
+
+
+stages:
+  - "pre-build"
+  - "build"
+  - "deploy"
+
+pre-build:
+  image: docker:19.03.13
+  stage: pre-build
+  tags:
+    - privileged
+  script:
+    - set -euo pipefail
+    - sh .ci/pre-build.sh
+    - echo "Starting the build 3...2...1..."
+  artifacts:
+    reports:
+      dotenv: build.env
+
+build:
+  stage: build
+  image: docker:19.03.13
+  services:
+    - docker:19.03.13-dind
+  tags:
+    - privileged
+  before_script:
+    - docker info
+  script:
+    - set -euo pipefail
+    - sh .ci/build.sh
+  dependencies:
+    - pre-build
+
+deploy:
+  stage: "deploy"
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: ['']
+  tags:
+    - privileged
+  script:
+    - set -euo pipefail
+    - bash .ci/deploy.sh
+  dependencies:
+    - pre-build
