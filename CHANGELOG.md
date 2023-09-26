@@ -5,8 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## [0.0.5] - 2023-09-26
+- Docker image tag: `0.0.5-ca65421`
 #### Fixed
 - `?for_complete=true` added in stop api call
+- `defer` function in main.go 
 
 #### Added
 - Support for sending start scan request
