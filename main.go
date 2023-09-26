@@ -62,7 +62,8 @@ func main() {
 		utils.SendCompleteScanRequest(&configuration, newLog)
 	}()
 
-	utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
+	go utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
+	go utils.SendStartScanRequest(&configuration, newLog)
 	go utils.SendHealthWebhook(&configuration, newLog)
 
 	err = StartScansInRoutine(&configuration)

@@ -60,3 +60,7 @@ type AlertBody struct {
 	Risk        string `json:"risk"`
 	Confidence  string `json:"confidence"`
 }
+
+type sendStatusChangeRequestStruct struct {
+	StateChange json.RawMessage `json:"state_change"`
+}
