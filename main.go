@@ -54,15 +54,16 @@ func main() {
 	}
 	newLog.Info("Configuration loaded successfully, sending start scan request on webhook")
 
-	defer func() {
+	defer func(configuration *utils.ScanData) {
 		if err := recover(); err != nil {
 			newLog.Errorf("Panic occurred in main thread -> %s", err)
-			utils.SendRequestToSlack(&configuration, newLog, err)
+			utils.SendRequestToSlack(configuration, newLog, err)
 		}
-		utils.SendCompleteScanRequest(&configuration, newLog)
-	}()
+		utils.SendCompleteScanRequest(configuration, newLog)
+	}(&configuration)
 
-	utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
+	go utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
+	go utils.SendStartScanRequest(&configuration, newLog)
 	go utils.SendHealthWebhook(&configuration, newLog)
 
 	err = StartScansInRoutine(&configuration)
