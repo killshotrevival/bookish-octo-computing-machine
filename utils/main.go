@@ -59,6 +59,13 @@ func LoadScanData(scanData *ScanData, newLog *log.Entry) {
 		scanData.Context.Target = value
 	}
 
+	value, ok = os.LookupEnv("SCAN_SCOPE_COVERAGE")
+	if !ok {
+		scanData.Context.ScanScopeCoverage = "full_domain"
+	} else {
+		scanData.Context.ScanScopeCoverage = value
+	}
+
 	newLog.Info("All data loaded successfully")
 }
 

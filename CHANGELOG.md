@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+#### Fixed
+- `SCAN_SCOPE_COVERAGE` pick from env variable
+
 ## [0.0.5] - 2023-09-26
 - Docker image tag: `0.0.5-ca65421`
 #### Fixed
