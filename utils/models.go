@@ -23,11 +23,12 @@ type RequestMeta struct {
 }
 
 type Meta struct {
-	AuditId      string `json:"auditId"`
-	JobId        string `json:"jobId"`
-	WebhookUrl   string `json:"webhookUrl"`
-	WebhookToken string `json:"webhookToken"`
-	ScanId       string `json:"scanId"`
+	AuditId         string `json:"auditId"`
+	JobId           string `json:"jobId"`
+	WebhookUrl      string `json:"webhookUrl"`
+	WebhookToken    string `json:"webhookToken"`
+	ScanId          string `json:"scanId"`
+	MaxScanDuration int64  `json:"maxScanDuration"`
 }
 
 type Context struct {

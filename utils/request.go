@@ -28,14 +28,12 @@ func SendRequestToWebhook(scanData *ScanData, newLog *log.Entry, event string, c
 	responseBody := bytes.NewBuffer(postBody)
 
 	resp, err := http.Post(scanData.Meta.WebhookUrl, "application/json", responseBody)
-
-	newLog.Infof("Response status received -> %s for alert", resp.Status)
-
 	if err != nil {
 		newLog.Errorf("Error occurred while sending request on webhook -> %s", err.Error())
 		return err
 	}
 
+	newLog.Infof("Response status received -> %s for alert", resp.Status)
 	return nil
 }
 

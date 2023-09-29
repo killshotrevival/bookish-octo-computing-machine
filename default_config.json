@@ -3,7 +3,8 @@
         "auditId": "<SCAN_AUDIT_ID>",
         "jobId": "<SCAN_JOB_ID>",
         "webhookUrl": "<SCAN_WEBHOOK_URL>",
-        "webhookToken": "<SCAN_WEBHOOK_TOKEN>"
+        "webhookToken": "<SCAN_WEBHOOK_TOKEN>",
+        "maxScanDuration": "<MAX_SCAN_DURATION>"
     },
     "context": {
         "target": "<SCAN_TARGET>"

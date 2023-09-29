@@ -32,16 +32,15 @@ func StartScan(scanData *utils.ScanData, host string) error {
 
 	cmd := exec.Command("furious", "-s", "connect", "-p", "1-65535", host)
 	stdout, err := cmd.Output()
+	if err != nil {
+		newLog.Errorf("Error occurred while furious -> %s", err.Error())
+		return err
+	}
 
 	furiousOutput := string(stdout)
 	if strings.Contains(string(stdout), "no such host") {
 		newLog.Errorf("Host %s was not found, can't run port scanner.", host)
 		return nil
-	}
-
-	if err != nil {
-		newLog.Errorf("Error occurred while furious -> %s", err.Error())
-		return err
 	}
 
 	newLog.Infof("Response found -> %s", furiousOutput)
@@ -98,6 +97,9 @@ func portScanResultToMap(furiousOutput string, newLog *log.Entry) (map[int]strin
 		}
 
 		service := match[2]
+		if service == "http" || service == "https" {
+			continue
+		}
 		portScanResult[port] = service
 	}
 
