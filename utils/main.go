@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -9,6 +10,7 @@ import (
 
 // This function will be used for loading all the required scan data from environment variables
 func LoadScanData(scanData *ScanData, newLog *log.Entry) {
+	var err error
 	newLog.Info("Starting scan data loading")
 	value, ok := os.LookupEnv("SCAN_AUDIT_ID")
 	if ok {
@@ -57,6 +59,24 @@ func LoadScanData(scanData *ScanData, newLog *log.Entry) {
 		newLog.Panic("No scan target found exiting")
 	} else {
 		scanData.Context.Target = value
+	}
+
+	value, ok = os.LookupEnv("MAX_SCAN_DURATION")
+	if !ok {
+		scanData.Meta.MaxScanDuration = 18000 // 5 hours in seconds
+	} else {
+		scanData.Meta.MaxScanDuration, err = strconv.ParseInt(value, 10, 64)
+
+		if err != nil {
+			newLog.Panic("Could not convert max scan duration to integer")
+		}
+	}
+
+	value, ok = os.LookupEnv("SCAN_SCOPE_COVERAGE")
+	if !ok {
+		scanData.Context.ScanScopeCoverage = "full_domain"
+	} else {
+		scanData.Context.ScanScopeCoverage = value
 	}
 
 	newLog.Info("All data loaded successfully")

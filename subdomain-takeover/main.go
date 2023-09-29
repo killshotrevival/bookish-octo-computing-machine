@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/haccer/subjack/subjack"
 	log "github.com/sirupsen/logrus"
@@ -18,6 +19,8 @@ func StartScan(scanData *utils.ScanData) error {
 
 	var subdomain, service string
 	portScanningDoneOnTarget := false
+	startTime := time.Now()
+	endTime := startTime.Add(time.Second * time.Duration(scanData.Meta.MaxScanDuration))
 
 	newLog := log.WithFields(log.Fields{
 		"name": "subdomain takeover",
@@ -96,7 +99,7 @@ func StartScan(scanData *utils.ScanData) error {
 				if err != nil {
 					newLog.Errorf("Error occurred while port scanning on subdomain %s | %s", subdomain, err.Error())
 				}
-				if subdomain == scanData.Context.Target {
+				if subdomain == domain {
 					portScanningDoneOnTarget = true
 				}
 
@@ -106,13 +109,18 @@ func StartScan(scanData *utils.ScanData) error {
 		} else {
 			newLog.Error("Empty string found in sub-domain list")
 		}
+
+		if time.Now().After(endTime) {
+			newLog.Info("Max duration exceeded, shutting down")
+			break
+		}
 	}
 
 	// There are some chances that the target uri can be found in subdomains list
 	if !portScanningDoneOnTarget {
-		err = portScanner.StartScan(scanData, scanData.Context.Target)
+		err = portScanner.StartScan(scanData, domain)
 		if err != nil {
-			newLog.Errorf("Error occurred while port scanning on Main domain %s | %s", scanData.Context.Target, err.Error())
+			newLog.Errorf("Error occurred while port scanning on Main domain %s | %s", domain, err.Error())
 		}
 	}
 

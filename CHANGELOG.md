@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## [0.1.0] - 2023-09-29
+- Docker image tag: `0.1.0-e323605`
+### Added
+- Max scan duration support.
+
+### Fixed
+- `ScanScopeCoverage` not picking from env bug
+
+### Changed
+- Excluded HTTP and HTTPS services from port-scanner results.
+- Fixed passing whole URL to port-scanner for main domain instead of just host.
+
 ## [0.0.5] - 2023-09-26
 - Docker image tag: `0.0.5-ca65421`
 #### Fixed
