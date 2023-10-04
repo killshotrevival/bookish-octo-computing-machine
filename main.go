@@ -62,7 +62,7 @@ func main() {
 		utils.SendCompleteScanRequest(configuration, newLog)
 	}(&configuration)
 
-	go utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan Started successfully"}`))
+	go utils.SendRequestToWebhook(&configuration, newLog, "scan.started", []byte(`{"reason":"Scan started successfully"}`))
 	go utils.SendStartScanRequest(&configuration, newLog)
 	go utils.SendHealthWebhook(&configuration, newLog)
 
@@ -71,5 +71,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Error occurred while running scans -> %s", err.Error()))
 	}
+
+	go utils.SendRequestToWebhook(&configuration, newLog, "scan.completed", []byte(`{"reason":"Scan completed successfully"}`))
 	newLog.Info("All scans completed successfully exiting")
 }
